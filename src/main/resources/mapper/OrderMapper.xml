@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 确保namespace与Mapper接口全类名完全一致 -->
+<mapper namespace="com.shop.demo.mapper.OrderMapper">
+    <!-- 新增订单：仅保留1个insertOrder，ID与Mapper接口方法名一致 -->
+    <insert id="insertOrder" parameterType="Order">
+        INSERT INTO `order`(user_id, product_id, num, total_price)
+        VALUES (#{userId}, #{productId}, #{num}, #{totalPrice})
+    </insert>
+
+    <!-- 根据用户ID查询订单：无重复，正常保留 -->
+    <select id="selectByUserId" parameterType="Long" resultType="Order">
+        SELECT id, user_id, product_id, num, total_price, create_time FROM `order` WHERE user_id = #{userId}
+    </select>
+</mapper>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shop.demo.mapper.ProductMapper">
+    <select id="selectAll" resultType="Product">
+        SELECT id, name, price, stock, description, create_time FROM product
+    </select>
+    <select id="selectById" parameterType="Long" resultType="Product">
+        SELECT id, name, price, stock, description, create_time FROM product WHERE id = #{id}
+    </select>
+    <update id="updateStock">
+        UPDATE product SET stock = #{newStock}, update_time = CURRENT_TIMESTAMP
+        WHERE id = #{productId} AND stock >= #{newStock}
+    </update>
+</mapper>
