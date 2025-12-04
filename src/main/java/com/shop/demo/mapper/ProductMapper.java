@@ -11,4 +11,7 @@ public interface ProductMapper {
     Product selectById(Long id);
     // 新增库存更新方法
     int updateStock(@Param("productId") Long productId, @Param("newStock") Integer newStock);
+
+    int insertProduct(Product product);
+
 }

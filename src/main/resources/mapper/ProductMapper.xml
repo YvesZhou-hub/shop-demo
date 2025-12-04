@@ -11,4 +11,8 @@
         UPDATE product SET stock = #{newStock}, update_time = CURRENT_TIMESTAMP
         WHERE id = #{productId} AND stock >= #{newStock}
     </update>
+    <insert id="insertProduct" parameterType="Product">
+        INSERT INTO product(product_name, price, stock, description, create_time)
+        VALUES (#{productName}, #{price}, #{stock}, #{description}, #{createTime})
+    </insert>
 </mapper>

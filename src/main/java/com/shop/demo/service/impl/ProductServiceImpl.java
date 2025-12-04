@@ -6,6 +6,8 @@ import com.shop.demo.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,5 +46,17 @@ public class ProductServiceImpl implements ProductService {
 
         log.info("开始查询 ID 为 {} 的商品", id);
         return productMapper.selectById(id);
+    }
+    @Override
+    public int addProduct(Product product) {
+        if (product == null || product.getProductName() == null || product.getPrice() == null) {
+            log.warn("添加商品失败：参数不完整");
+            return 0;
+        }
+
+        // 设置创建时间
+        product.setCreateTime(LocalDateTime.now());
+        log.info("开始添加商品：{}", product.getProductName());
+        return productMapper.insertProduct(product);
     }
 }

@@ -2,14 +2,12 @@ package com.shop.demo.controller;
 
 import com.shop.demo.entity.Product;
 import com.shop.demo.service.ProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +65,28 @@ public class ProductController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("查询商品详情异常", e);
+            response.put("code", 500);
+            response.put("msg", "服务器内部错误");
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+    @PostMapping("/add")
+    public ResponseEntity<Map<String, Object>> addProduct(@Valid @RequestBody Product product) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            int result = productService.addProduct(product);
+            if (result > 0) {
+                response.put("code", 200);
+                response.put("msg", "商品添加成功");
+                response.put("data", product.getId());
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("code", 400);
+                response.put("msg", "商品添加失败");
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            log.error("添加商品异常", e);
             response.put("code", 500);
             response.put("msg", "服务器内部错误");
             return ResponseEntity.status(500).body(response);
