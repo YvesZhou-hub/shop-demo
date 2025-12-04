@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>支付宝收款 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+    <style>
+        .payment-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .payment-header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .payment-header h2 {
+            font-size: 22px;
+            margin-bottom: 8px;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .payment-header p {
+            color: #718096;
+            margin: 0;
+            font-size: 14px;
+        }
+        .order-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .order-item:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .qr-wrapper {
+            width: 280px;
+            height: 280px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 16px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .qr-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .qr-note {
+            color: #718096;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .payment-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #108ee9; /* 支付宝蓝 */
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #0e7ed6;
+        }
+        .btn-secondary {
+            background: #6b7280;
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        .payment-tips {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f0f7ff;
+            border-radius: 6px;
+            border-left: 4px solid #108ee9;
+        }
+        .payment-tips h4 {
+            margin: 0 0 6px 0;
+            color: #2d3748;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .payment-tips p {
+            margin: 0;
+            color: #718096;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #718096;
+        }
+        .empty-state h3 {
+            margin: 0 0 16px 0;
+            color: #2d3748;
+            font-size: 18px;
+        }
+        .empty-buttons {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>支付宝收款</h1>
+        <nav>
+            <a href="index.html">首页</a>
+            <a href="cart.html">购物车</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <!-- 订单信息不存在时显示 -->
+    <div id="empty-area" class="empty-state" style="display:none">
+        <h3>未找到订单信息</h3>
+        <p>请从购物车或订单页发起支付</p>
+        <div class="empty-buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='cart.html'">前往购物车</button>
+            <button class="btn btn-primary" onclick="window.location.href='order.html'">查看我的订单</button>
+        </div>
+    </div>
+
+    <!-- 正常收款界面 -->
+    <section id="payment-area" class="card payment-container" style="display:none">
+        <div class="payment-header">
+            <h2>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMTA4ZWU5IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJBMTAgMTAgMCAwIDEgMjIgMTJBMTAgMTAgMCAwIDEgMTIgMjJBMTAgMTAgMCAwIDEgMiAxMkExMCAxMCAwIDAgMSAxMiAyWiIvPjxwYXRoIGQ9Ik0xMiA0QzcuNTkgNCA0IDcuNTkgNCAxMkM0IDE2LjQxIDEwLjY2IDE4IDEyIDE4QzEzLjM0IDE4IDE5IDE2LjQxIDE5IDEyQzE5IDcuNTkgMTUuNDEgNCAxMiA0WiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTAiIHI9IjIiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIyIi8+PHBhdGggZD0iTTExIDE1VjE3Ii8+PHBhdGggZD0iTTEzIDE1VjE3Ii8+PC9zdmc+" width="24" height="24" alt="支付宝">
+                支付宝扫码支付
+            </h2>
+            <p>订单支付有效期：30分钟，请尽快完成支付</p>
+        </div>
+
+        <!-- 订单信息 -->
+        <div class="order-info">
+            <div class="order-item">
+                <span>订单编号：</span>
+                <span id="order-id">N/A</span>
+            </div>
+            <div class="order-item">
+                <span>应付金额：</span>
+                <span id="pay-amount" style="color: #e53e3e;">¥0.00</span>
+            </div>
+        </div>
+
+        <!-- 支付宝二维码 -->
+        <div class="qr-container">
+            <div class="qr-wrapper" id="qr-area">
+                <!-- 替换为你的支付宝收款码图片URL -->
+                <img src="https://picsum.photos/id/180/300/300" class="qr-image" id="alipay-qr" alt="支付宝收款二维码">
+            </div>
+            <p class="qr-note">请使用支付宝APP扫描上方二维码</p>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="payment-actions">
+            <button class="btn btn-primary" id="refresh-qr">刷新二维码</button>
+            <button class="btn btn-secondary" id="btn-paid">我已完成支付</button>
+        </div>
+
+        <!-- 支付提示 -->
+        <div class="payment-tips">
+            <h4>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                支付提示
+            </h4>
+            <p>1. 扫码后请核对订单金额再支付；2. 支付完成后点击"我已完成支付"按钮；3. 若支付失败请刷新二维码重试</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 16px;">
+            <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;" id="btn-back-orders">返回订单列表</button>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 支付宝收款页面</small>
+</footer>
+
+<script>
+    // 你的支付宝收款码基础URL（如果是静态码直接用这个，如果是动态码需要替换为生成接口）
+    const ALIPAY_QR_BASE_URL = "IMG_4459.JPG"; // 替换为你的真实支付宝收款码URL
+
+    // 读取订单信息并显示
+    function loadOrderPaymentInfo() {
+        const raw = sessionStorage.getItem('payment_info');
+        if (!raw) {
+            document.getElementById('empty-area').style.display = 'block';
+            document.getElementById('payment-area').style.display = 'none';
+            return;
+        }
+
+        const info = JSON.parse(raw);
+        // 验证订单信息完整性
+        if (!info.orderIds || !info.orderIds.length || !info.total) {
+            document.getElementById('empty-area').style.display = 'block';
+            document.getElementById('payment-area').style.display = 'none';
+            return;
+        }
+
+        // 显示收款界面
+        document.getElementById('empty-area').style.display = 'none';
+        document.getElementById('payment-area').style.display = 'block';
+
+        // 填充订单信息
+        document.getElementById('order-id').textContent = info.orderIds.join(', ');
+        const amount = Number(info.total || 0).toFixed(2);
+        document.getElementById('pay-amount').textContent = `¥${amount}`;
+
+        // 更新二维码（如果是动态码，可以在这里拼接订单号和金额参数）
+        updateAlipayQrCode(info);
+
+        // 绑定按钮事件
+        bindButtonEvents();
+    }
+
+    // 更新支付宝二维码
+    function updateAlipayQrCode(orderInfo) {
+        const qrImage = document.getElementById('alipay-qr');
+        // 静态码直接使用基础URL，动态码可以这样拼接参数：
+        // const dynamicQrUrl = `${ALIPAY_QR_BASE_URL}?orderId=${orderInfo.orderIds[0]}&amount=${orderInfo.total}`;
+        qrImage.src = ALIPAY_QR_BASE_URL;
+    }
+
+    // 绑定按钮事件
+    function bindButtonEvents() {
+        // 刷新二维码
+        document.getElementById('refresh-qr').addEventListener('click', () => {
+            const qrImage = document.getElementById('alipay-qr');
+            // 添加时间戳防止缓存
+            qrImage.src = `${ALIPAY_QR_BASE_URL}?t=${Date.now()}`;
+
+            // 显示刷新提示
+            const qrNote = document.querySelector('.qr-note');
+            const originalNote = qrNote.textContent;
+            qrNote.textContent = '二维码刷新中...';
+
+            setTimeout(() => {
+                qrNote.textContent = originalNote;
+                alert('二维码已刷新，请重新扫描');
+            }, 800);
+        });
+
+        // 我已完成支付
+        document.getElementById('btn-paid').addEventListener('click', () => {
+            // 模拟支付验证（真实场景需要调用后端接口验证支付状态）
+            document.getElementById('btn-paid').disabled = true;
+            document.getElementById('btn-paid').textContent = '验证中...';
+
+            setTimeout(() => {
+                // 模拟验证通过
+                sessionStorage.removeItem('payment_info');
+                alert('支付成功！订单已更新');
+                window.location.href = 'order.html';
+            }, 1500);
+        });
+
+        // 返回订单列表
+        document.getElementById('btn-back-orders').addEventListener('click', () => {
+            window.location.href = 'order.html';
+        });
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', loadOrderPaymentInfo);
+</script>
+</body>
+</html>

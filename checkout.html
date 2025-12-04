@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>结算 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>结算</h1>
+        <nav>
+            <a href="index.html">首页</a>
+            <a href="cart.html">购物车</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="card">
+        <h2>确认订单并支付</h2>
+
+        <div id="items-section">
+            <table class="cart-table">
+                <thead><tr><th>商品</th><th>单价</th><th>数量</th><th>小计</th></tr></thead>
+                <tbody id="checkout-body"></tbody>
+            </table>
+        </div>
+
+        <div style="margin-top:12px">
+            <label>用户 ID: <input id="checkout-userId" type="number" min="1" value="1" /></label>
+        </div>
+
+        <div style="margin-top:8px">
+            <label>收货地址: <input id="checkout-address" placeholder="示例：北京市 朝阳区 XX 街道" style="width:100%" /></label>
+        </div>
+
+        <div style="margin-top:12px">
+            <div>总计: ¥<span id="checkout-total">0.00</span></div>
+            <button id="btn-pay" class="btn" style="margin-top:8px">提交订单并支付</button>
+        </div>
+
+        <div id="checkout-result" class="result" style="margin-top:12px"></div>
+    </section>
+</main>
+
+<footer>
+    <small>商店 — 结算</small>
+</footer>
+
+<script src="assets/app.js"></script>
+<script>
+    const api = new ApiClient();
+
+    // 从 sessionStorage 获取用户在 cart 页选择的商品 id 列表
+    async function loadCheckoutSelection() {
+        const selRaw = sessionStorage.getItem('checkout_selection');
+        let selectedIds = [];
+        try {
+            selectedIds = selRaw ? JSON.parse(selRaw) : [];
+        } catch (e) {
+            selectedIds = [];
+        }
+        const cart = api.getCart();
+        const items = cart.filter(ci => selectedIds.includes(String(ci.productId)) || selectedIds.includes(ci.productId));
+        if (!items || items.length === 0) {
+            document.getElementById('checkout-body').innerHTML = '<tr><td colspan="4" class="empty">没有可结算商品</td></tr>';
+            document.getElementById('btn-pay').disabled = true;
+            return;
+        }
+        document.getElementById('btn-pay').disabled = false;
+        const tbody = document.getElementById('checkout-body');
+        tbody.innerHTML = '';
+        let total = 0;
+        items.forEach(it => {
+            const tr = document.createElement('tr');
+            const subtotal = Number(it.price || 0) * Number(it.qty || 0);
+            total += subtotal;
+            tr.innerHTML = `
+          <td>${escapeHtml(it.productName)}</td>
+          <td>¥${Number(it.price || 0).toFixed(2)}</td>
+          <td>${it.qty}</td>
+          <td>¥${subtotal.toFixed(2)}</td>
+        `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('checkout-total').textContent = total.toFixed(2);
+    }
+
+    document.getElementById('btn-pay').addEventListener('click', async () => {
+        const userId = Number(document.getElementById('checkout-userId').value || 0);
+        const address = document.getElementById('checkout-address').value || '';
+        const resultEl = document.getElementById('checkout-result');
+        resultEl.textContent = '';
+        if (!userId || userId <= 0) { alert('请输入有效用户 ID'); return; }
+
+        // 构造要结算的 items（读取 sessionStorage 的 selection）
+        const selRaw = sessionStorage.getItem('checkout_selection');
+        let selectedIds = [];
+        try { selectedIds = selRaw ? JSON.parse(selRaw) : []; } catch(e){ selectedIds = []; }
+        const cart = api.getCart();
+        const items = cart.filter(ci => selectedIds.includes(String(ci.productId)) || selectedIds.includes(ci.productId));
+        if (!items || items.length === 0) { alert('没有可结算商品'); return; }
+
+        // 禁用按钮防止重复提交
+        const btn = document.getElementById('btn-pay');
+        btn.disabled = true;
+        btn.textContent = '提交中…';
+
+        // 逐项下单（若需事务一致性请在后端实现批量下单接口）
+        try {
+            const toCheckout = items.map(it => ({ productId: it.productId, qty: it.qty }));
+            const result = await api.checkoutItems(userId, toCheckout);
+            // 处理结果：删除成功下单的项
+            if (result && result.success && result.success.length > 0) {
+                // 计算支付总额（以页面展示总计为准）
+                const total = Number(document.getElementById('checkout-total').textContent || 0);
+                // 从本地 cart 中删除已成功下单的商品
+                result.success.forEach(s => api.removeFromCart(s.productId));
+                // 清除 sessionSelection
+                sessionStorage.removeItem('checkout_selection');
+
+                // 准备 payment_info 并跳转到收款页面
+                const paymentInfo = {
+                    orderIds: result.success.map(s => s.orderId),
+                    total: total,
+                    userId: userId,
+                    address: address,
+                    failed: result.failed || [],
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem('payment_info', JSON.stringify(paymentInfo));
+
+                // 触发 cart badge 更新
+                document.dispatchEvent(new CustomEvent('cart:updated'));
+
+                // 跳转到 payment 页面显示收款信息
+                window.location.href = 'payment.html';
+                return;
+            }
+
+            // 如果没有成功订单
+            if (result && result.failed && result.failed.length > 0) {
+                resultEl.textContent = '提交失败：' + result.failed.map(f => `${f.productId}:${f.reason}`).join('; ');
+            } else {
+                resultEl.textContent = '无成功订单，请重试';
+            }
+        } catch (e) {
+            console.error(e);
+            resultEl.textContent = '提交异常：' + (e.message || '未知错误');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '提交订单并支付';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadCheckoutSelection);
+</script>
+</body>
+</html>

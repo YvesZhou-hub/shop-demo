@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>购物车 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>购物车</h1>
+        <nav>
+            <a href="index.html">首页</a>
+            <a href="checkout.html">去结算</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="card">
+        <h2>购物车</h2>
+        <div id="cart-empty" class="empty" style="display:none">购物车空</div>
+        <table id="cart-table" class="cart-table" style="display:none">
+            <thead>
+            <tr>
+                <th><input id="select-all" type="checkbox" /></th>
+                <th>商品</th>
+                <th>单价(¥)</th>
+                <th>数量</th>
+                <th>小计(¥)</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="cart-body"></tbody>
+        </table>
+
+        <div id="cart-actions" style="margin-top:12px;display:none">
+            <span>总计: ¥<span id="cart-total">0.00</span></span>
+            <button id="btn-checkout" class="btn" style="margin-left:12px">去结算</button>
+            <button id="btn-clear" class="btn" style="background:#6b7280;margin-left:8px">清空购物车</button>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 购物车</small>
+</footer>
+
+<script src="assets/app.js"></script>
+<script>
+    const api = new ApiClient();
+
+    function renderCart() {
+        const cart = api.getCart();
+        const table = document.getElementById('cart-table');
+        const body = document.getElementById('cart-body');
+        const empty = document.getElementById('cart-empty');
+        const actions = document.getElementById('cart-actions');
+        const totalEl = document.getElementById('cart-total');
+
+        if (!cart || cart.length === 0) {
+            table.style.display = 'none';
+            actions.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        table.style.display = 'table';
+        actions.style.display = 'block';
+        body.innerHTML = '';
+        cart.forEach(ci => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+          <td><input class="row-select" type="checkbox" data-id="${ci.productId}" checked /></td>
+          <td>${escapeHtml(ci.productName)}</td>
+          <td>${Number(ci.price ?? 0).toFixed(2)}</td>
+          <td>
+            <div class="qty-control">
+              <button class="qty-dec" data-id="${ci.productId}">-</button>
+              <input class="qty-input" data-id="${ci.productId}" value="${ci.qty}" style="width:50px;text-align:center" />
+              <button class="qty-inc" data-id="${ci.productId}">+</button>
+            </div>
+          </td>
+          <td class="row-subtotal">¥${(Number(ci.price || 0) * Number(ci.qty || 0)).toFixed(2)}</td>
+          <td><button class="btn remove-item" data-id="${ci.productId}">删除</button></td>
+        `;
+            body.appendChild(tr);
+        });
+
+        // 绑定事件
+        body.querySelectorAll('.qty-inc').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const input = body.querySelector(`.qty-input[data-id="${id}"]`);
+                const newQty = Number(input.value || 0) + 1;
+                api.updateCartQty(id, newQty);
+                renderCart();
+            });
+        });
+        body.querySelectorAll('.qty-dec').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const input = body.querySelector(`.qty-input[data-id="${id}"]`);
+                const newQty = Math.max(0, Number(input.value || 0) - 1);
+                api.updateCartQty(id, newQty);
+                renderCart();
+            });
+        });
+        body.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('change', () => {
+                const id = input.getAttribute('data-id');
+                let v = Number(input.value || 0);
+                if (!Number.isInteger(v) || v < 0) v = 1;
+                api.updateCartQty(id, v);
+                renderCart();
+            });
+        });
+        body.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                api.removeFromCart(id);
+                renderCart();
+            });
+        });
+
+        // select-all
+        document.getElementById('select-all').checked = true;
+        document.getElementById('select-all').addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            body.querySelectorAll('.row-select').forEach(cb => cb.checked = checked);
+        });
+
+        // 计算总价
+        const total = cart.reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 0)), 0);
+        totalEl.textContent = total.toFixed(2);
+    }
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+        if (confirm('确定清空购物车？')) {
+            api.clearCart();
+            renderCart();
+        }
+    });
+
+    document.getElementById('btn-checkout').addEventListener('click', () => {
+        // 获取选中的商品
+        const selected = Array.from(document.querySelectorAll('.row-select'))
+            .filter(cb => cb.checked)
+            .map(cb => cb.getAttribute('data-id'));
+        if (selected.length === 0) {
+            alert('请选择要结算的商品');
+            return;
+        }
+        // 保存 selection 到 sessionStorage，用于 checkout 页面读取
+        sessionStorage.setItem('checkout_selection', JSON.stringify(selected));
+        window.location.href = 'checkout.html';
+    });
+
+    // 监听 cart 更新
+    document.addEventListener('cart:updated', renderCart);
+    document.addEventListener('DOMContentLoaded', renderCart);
+</script>
+</body>
+</html>
