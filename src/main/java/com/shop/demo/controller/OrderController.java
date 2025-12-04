@@ -1,6 +1,8 @@
 package com.shop.demo.controller;
 
 import com.shop.demo.entity.Order;
+import com.shop.demo.exception.InsufficientStockException;
+import com.shop.demo.exception.ProductNotFoundException;
 import com.shop.demo.service.OrderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -15,21 +17,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 订单接口控制器（适配 Spring Boot 3.x + JDK 17）
- */
 @Slf4j
 @RestController
 @RequestMapping("/order")
-@RequiredArgsConstructor // 构造函数注入替代 @Resource
-@Validated // 开启方法参数校验
+@RequiredArgsConstructor
+@Validated
 public class OrderController {
 
-    private final OrderService orderService; // 构造函数注入
+    private final OrderService orderService;
 
-    /**
-     * 新增订单（POST请求，支持参数校验和统一响应格式）
-     */
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> addOrder(@Valid @RequestBody Order order) {
         Map<String, Object> response = new HashMap<>();
@@ -38,24 +34,25 @@ public class OrderController {
             if (result > 0) {
                 response.put("code", 200);
                 response.put("msg", "订单创建成功");
-                response.put("data", order.getId()); // 返回订单ID
+                response.put("data", order.getId());
                 return ResponseEntity.ok(response);
-            } else {
-                response.put("code", 400);
-                response.put("msg", "订单创建失败（库存不足/参数错误等）");
-                return ResponseEntity.badRequest().body(response);
             }
+        } catch (ProductNotFoundException | InsufficientStockException e) {
+            // 捕获业务异常，返回具体错误信息
+            response.put("code", 400);
+            response.put("msg", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             log.error("创建订单接口异常", e);
             response.put("code", 500);
             response.put("msg", "服务器内部错误");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+        response.put("code", 400);
+        response.put("msg", "订单创建失败");
+        return ResponseEntity.badRequest().body(response);
     }
 
-    /**
-     * 根据用户ID查询订单（补充参数校验和统一响应）
-     */
     @GetMapping("/user/{userId}")
     public ResponseEntity<Map<String, Object>> getOrdersByUserId(
             @PathVariable @Min(value = 1, message = "用户ID必须大于0") Long userId) {
@@ -74,9 +71,6 @@ public class OrderController {
         }
     }
 
-    /**
-     * 全局参数校验异常捕获
-     */
     @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolationException(jakarta.validation.ConstraintViolationException e) {
         Map<String, Object> response = new HashMap<>();

@@ -2,41 +2,37 @@ package com.shop.demo.service.impl;
 
 import com.shop.demo.entity.Order;
 import com.shop.demo.entity.Product;
+import com.shop.demo.exception.InsufficientStockException;
+import com.shop.demo.exception.ProductNotFoundException;
 import com.shop.demo.mapper.OrderMapper;
 import com.shop.demo.mapper.ProductMapper;
 import com.shop.demo.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * 订单服务实现类（适配 Spring Boot 3.x + JDK 17）
+ * 订单服务实现类（修复事务一致性及库存问题）
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-    // 构造函数注入（Spring 3.x 推荐）
     private final OrderMapper orderMapper;
-    private final ProductMapper productMapper; // 注入商品Mapper用于扣减库存
+    private final ProductMapper productMapper; // 新增库存操作依赖
 
     /**
-     * 新增订单（包含库存扣减和事务控制）
+     * 新增订单（包含事务控制、库存校验与扣减）
      */
     @Override
-    @Transactional(
-            propagation = Propagation.REQUIRED,
-            isolation = Isolation.DEFAULT,
-            rollbackFor = Exception.class
-    )
+    @Transactional(rollbackFor = Exception.class) // 关键：事务控制，确保原子性
     public int addOrder(Order order) {
         // 1. 基础参数校验
         if (order == null) {
@@ -55,61 +51,53 @@ public class OrderServiceImpl implements OrderService {
             log.warn("新增订单失败：购买数量非法（num={}）", order.getNum());
             return 0;
         }
-        if (order.getTotalPrice() == null || order.getTotalPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            log.warn("新增订单失败：订单总价非法（totalPrice={}）", order.getTotalPrice());
-            return 0;
-        }
 
-        // 2. 日志打印（便于追踪订单创建）
-        log.info("开始创建订单：userId={}, productId={}, 购买数量={}, 总价={}",
-                order.getUserId(), order.getProductId(), order.getNum(), order.getTotalPrice());
-
-        // 3. 查询商品库存是否充足
-        Product product = productMapper.selectById(order.getProductId());
+        // 2. 查询商品（加锁防止并发问题）
+        Product product = productMapper.selectByIdForUpdate(order.getProductId()); // 悲观锁查询
         if (product == null) {
-            log.warn("商品不存在：productId={}", order.getProductId());
-            return 0;
-        }
-        if (product.getStock() < order.getNum()) {
-            log.warn("库存不足：productId={}, 需求={}, 库存={}",
-                    order.getProductId(), order.getNum(), product.getStock());
-            return 0;
+            throw new ProductNotFoundException("商品不存在（productId=" + order.getProductId() + "）");
         }
 
-        // 4. 扣减库存
+        // 3. 库存校验
+        if (product.getStock() == null || product.getStock() < order.getNum()) {
+            throw new InsufficientStockException(
+                    "库存不足（商品ID=" + order.getProductId() +
+                            ", 库存=" + product.getStock() +
+                            ", 购买数量=" + order.getNum()
+            );
+        }
+
+        // 4. 计算订单总价（防止前端篡改，用商品单价重新计算）
+        BigDecimal actualTotalPrice = product.getPrice().multiply(BigDecimal.valueOf(order.getNum()));
+        order.setTotalPrice(actualTotalPrice);
+
+        // 5. 扣减库存
         int newStock = product.getStock() - order.getNum();
-        int updateCount = productMapper.updateStock(order.getProductId(), newStock);
-        if (updateCount == 0) {
-            // 库存更新失败（可能被其他线程抢先扣减），触发事务回滚
-            throw new RuntimeException("库存扣减失败，可能已被其他订单占用");
+        int updateResult = productMapper.updateStock(
+                order.getProductId(),
+                newStock,
+                order.getNum() // 传递购买数量用于SQL条件判断
+        );
+        if (updateResult <= 0) {
+            log.error("库存扣减失败，可能存在并发冲突（productId={}）", order.getProductId());
+            throw new RuntimeException("库存扣减失败，请重试");
         }
 
-        // 5. 执行数据库插入订单
-        int insertCount = orderMapper.insertOrder(order);
-        if (insertCount == 0) {
-            // 订单插入失败，触发事务回滚（库存会自动回滚）
-            throw new RuntimeException("订单创建失败");
-        }
-
-        log.info("订单创建成功：订单 ID={}", order.getId());
-        return insertCount;
+        // 6. 创建订单
+        order.setCreateTime(LocalDateTime.now());
+        int result = orderMapper.insertOrder(order);
+        log.info("订单创建成功：订单ID={}, 商品库存已更新（原库存={}, 新库存={}",
+                order.getId(), product.getStock(), newStock);
+        return result;
     }
 
-    /**
-     * 根据用户 ID 查询订单
-     */
     @Override
     public List<Order> getOrdersByUserId(Long userId) {
-        // 1. 参数校验
         if (userId == null || userId <= 0) {
             log.warn("查询订单失败：用户 ID 非法（userId={}）", userId);
-            return List.of(); // 非法 ID 返回空集合，避免 null
+            return List.of();
         }
-
-        // 2. 日志打印
         log.info("开始查询用户 ID={} 的所有订单", userId);
-
-        // 3. 执行查询（空结果返回空集合）
         List<Order> orders = orderMapper.selectByUserId(userId);
         return Optional.ofNullable(orders).orElse(List.of());
     }
