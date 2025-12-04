@@ -4,8 +4,11 @@
 
 <!-- 确保namespace与Mapper接口全类名完全一致 -->
 <mapper namespace="com.shop.demo.mapper.OrderMapper">
-    <!-- 新增订单：仅保留1个insertOrder，ID与Mapper接口方法名一致 -->
-    <insert id="insertOrder" parameterType="Order">
+    <!-- 新增订单：添加useGeneratedKeys和keyProperty实现主键回填 -->
+    <insert id="insertOrder"
+            parameterType="Order"
+            useGeneratedKeys="true"
+            keyProperty="id">
         INSERT INTO `order`(user_id, product_id, num, total_price)
         VALUES (#{userId}, #{productId}, #{num}, #{totalPrice})
     </insert>

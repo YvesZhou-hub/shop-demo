@@ -1,29 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.shop.demo.mapper.ProductMapper">
-    <!-- 修复商品名称字段映射（name -> product_name） -->
-    <select id="selectAll" resultType="Product">
-        SELECT id, product_name as productName, price, stock, description, create_time as createTime FROM product
+    <!-- 查询所有商品：数据库商品名称字段是 name，映射到实体类 productName -->
+    <select id="selectAll" resultType="com.shop.demo.entity.Product">
+        SELECT
+            id,
+            name as productName,  -- 数据库字段 name → 实体类 productName
+            price,
+            stock,
+            description,
+            create_time as createTime  -- 数据库字段 create_time → 实体类 createTime
+        FROM product
     </select>
 
-    <!-- 修复商品名称字段映射 -->
-    <select id="selectById" parameterType="Long" resultType="Product">
-        SELECT id, product_name as productName, price, stock, description, create_time as createTime FROM product WHERE id = #{id}
-    </select>
-
-    <!-- 新增带悲观锁的查询（FOR UPDATE） -->
-    <select id="selectByIdForUpdate" parameterType="Long" resultType="Product">
-        SELECT id, product_name as productName, price, stock, description, create_time as createTime
+    <!-- 根据ID查询商品 -->
+    <select id="selectById" parameterType="Long" resultType="com.shop.demo.entity.Product">
+        SELECT
+            id,
+            name as productName,
+            price,
+            stock,
+            description,
+            create_time as createTime
         FROM product
         WHERE id = #{id}
-        FOR UPDATE  <!-- 悲观锁，防止并发更新 -->
     </select>
 
-    <!-- 修复库存更新条件（stock >= 购买数量） -->
+    <!-- 悲观锁查询：用于库存更新防并发 -->
+    <select id="selectByIdForUpdate" parameterType="Long" resultType="com.shop.demo.entity.Product">
+        SELECT
+            id,
+            name as productName,
+            price,
+            stock,
+            description,
+            create_time as createTime
+        FROM product
+        WHERE id = #{id}
+            FOR UPDATE  -- 行级锁，防止并发更新冲突
+    </select>
+
+    <!-- 更新库存：数据库无 update_time 字段，删除该字段赋值 -->
     <update id="updateStock">
         UPDATE product
-        SET stock = #{newStock}, update_time = CURRENT_TIMESTAMP
+        SET stock = #{newStock}  -- 移除 update_time（数据库表中未定义）
         WHERE id = #{productId}
-        AND stock >= #{buyNum}  <!-- 确保扣减后库存不为负 -->
+          AND stock >= #{buyNum}  -- 库存充足校验，防止超卖
     </update>
+
+    <!-- 插入商品：数据库商品名称字段是 name，对应实体类 productName -->
+    <insert id="insertProduct" parameterType="com.shop.demo.entity.Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (
+            name,  -- 数据库字段名：name
+            price,
+            stock,
+            description,
+            create_time
+        ) VALUES (
+                     #{productName},  -- 实体类属性名：productName
+                     #{price},
+                     #{stock},
+                     #{description},
+                     CURRENT_TIMESTAMP  -- 数据库自动填充创建时间（也可由程序传入）
+                 )
+    </insert>
 </mapper>
