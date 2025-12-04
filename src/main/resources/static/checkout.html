@@ -38,7 +38,7 @@
 
         <div style="margin-top:12px">
             <div>总计: ¥<span id="checkout-total">0.00</span></div>
-            <button id="btn-pay" class="btn" style="margin-top:8px">提交订单并支付（模拟）</button>
+            <button id="btn-pay" class="btn" style="margin-top:8px">提交订单并支付</button>
         </div>
 
         <div id="checkout-result" class="result" style="margin-top:12px"></div>
@@ -46,7 +46,7 @@
 </main>
 
 <footer>
-    <small>示例商店 — 结算</small>
+    <small>商店 — 结算</small>
 </footer>
 
 <script src="assets/app.js"></script>
@@ -151,7 +151,7 @@
             resultEl.textContent = '提交异常：' + (e.message || '未知错误');
         } finally {
             btn.disabled = false;
-            btn.textContent = '提交订单并支付（模拟）';
+            btn.textContent = '提交订单并支付';
         }
     });
 
