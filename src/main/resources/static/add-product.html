@@ -3,138 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>新增商品 - 电商演示系统</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <title>添加新商品 - 电商演示平台</title>
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #059669;
+        }
+        .error {
+            color: #ef4444;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        .header {
+            padding: 20px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-<!-- 导航栏 -->
-<nav class="bg-blue-600 text-white shadow-md">
-    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="text-xl font-bold">电商演示系统</div>
-        <div class="flex space-x-4">
-            <a href="#" class="hover:text-blue-200 transition"><i class="fa fa-home mr-1"></i>首页</a>
-            <a href="#" class="hover:text-blue-200 transition"><i class="fa fa-list mr-1"></i>商品列表</a>
-            <a href="#" class="hover:text-blue-200 transition bg-blue-700 px-3 py-1 rounded"><i class="fa fa-plus mr-1"></i>新增商品</a>
-        </div>
-    </div>
-</nav>
-
-<!-- 主要内容 -->
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">新增商品</h2>
-
-        <!-- 消息提示区 -->
-        <div id="message" class="mb-4 hidden p-3 rounded"></div>
-
-        <!-- 商品表单 -->
-        <form id="productForm" class="space-y-4">
-            <div>
-                <label for="productName" class="block text-gray-700 mb-1">商品名称 <span class="text-red-500">*</span></label>
-                <input type="text" id="productName" name="productName"
-                       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       required>
-            </div>
-
-            <div>
-                <label for="price" class="block text-gray-700 mb-1">商品价格 <span class="text-red-500">*</span></label>
-                <input type="number" id="price" name="price" min="0.01" step="0.01"
-                       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       required>
-            </div>
-
-            <div>
-                <label for="stock" class="block text-gray-700 mb-1">商品库存 <span class="text-red-500">*</span></label>
-                <input type="number" id="stock" name="stock" min="0"
-                       class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       required>
-            </div>
-
-            <div>
-                <label for="description" class="block text-gray-700 mb-1">商品描述</label>
-                <textarea id="description" name="description" rows="4"
-                          class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-            </div>
-
-            <div class="pt-2">
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition mr-2">
-                    <i class="fa fa-save mr-1"></i>保存商品
-                </button>
-                <button type="reset" class="bg-gray-300 text-gray-800 px-6 py-2 rounded hover:bg-gray-400 transition">
-                    <i class="fa fa-refresh mr-1"></i>重置
-                </button>
-            </div>
-        </form>
-    </div>
+<body>
+<div class="header">
+    <h1>添加新商品</h1>
+    <a href="product-list.html">返回商品列表</a> |
+    <a href="order-list.html">查询订单</a>
 </div>
 
-<!-- 页脚 -->
-<footer class="bg-gray-800 text-white py-6 mt-12">
-    <div class="container mx-auto px-4 text-center">
-        <p>© 2023 电商演示系统 - 仅供学习使用</p>
-    </div>
-</footer>
+<div class="form-container">
+    <form id="productForm">
+        <div class="form-group">
+            <label for="productName">商品名称:</label>
+            <input type="text" id="productName" required>
+            <div class="error" id="productNameError"></div>
+        </div>
+        <div class="form-group">
+            <label for="price">商品价格(元):</label>
+            <input type="number" id="price" required min="0.01" step="0.01">
+            <div class="error" id="priceError"></div>
+        </div>
+        <div class="form-group">
+            <label for="stock">商品库存:</label>
+            <input type="number" id="stock" required min="0">
+            <div class="error" id="stockError"></div>
+        </div>
+        <div class="form-group">
+            <label for="description">商品描述:</label>
+            <textarea id="description"></textarea>
+            <div class="error" id="descriptionError"></div>
+        </div>
+        <button type="submit" class="btn">添加商品</button>
+    </form>
+</div>
 
 <script>
-    // 表单提交处理
-    document.getElementById('productForm').addEventListener('submit', function(e) {
+    // 表单提交事件
+    document.getElementById('productForm').addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // 获取表单数据
-        const productData = {
-            productName: document.getElementById('productName').value,
+        // 收集表单数据
+        const product = {
+            productName: document.getElementById('productName').value.trim(),
             price: parseFloat(document.getElementById('price').value),
             stock: parseInt(document.getElementById('stock').value),
-            description: document.getElementById('description').value
+            description: document.getElementById('description').value.trim()
         };
 
-        // 显示加载状态
-        showMessage('正在提交...', 'info');
+        // 前端简单验证
+        let isValid = true;
+        if (!product.productName) {
+            document.getElementById('productNameError').textContent = '商品名称不能为空';
+            isValid = false;
+        } else {
+            document.getElementById('productNameError').textContent = '';
+        }
 
-        // 发送请求到后端
+        if (isNaN(product.price) || product.price <= 0) {
+            document.getElementById('priceError').textContent = '请输入有效的价格';
+            isValid = false;
+        } else {
+            document.getElementById('priceError').textContent = '';
+        }
+
+        if (isNaN(product.stock) || product.stock < 0) {
+            document.getElementById('stockError').textContent = '请输入有效的库存数量';
+            isValid = false;
+        } else {
+            document.getElementById('stockError').textContent = '';
+        }
+
+        if (!isValid) return;
+
+        // 调用后端添加商品接口
         fetch('http://localhost:8080/product/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(productData)
+            body: JSON.stringify(product)
         })
             .then(response => response.json())
             .then(data => {
                 if (data.code === 200) {
-                    showMessage('商品添加成功！', 'success');
-                    // 重置表单
-                    document.getElementById('productForm').reset();
+                    alert(`商品添加成功！商品ID: ${data.data}`);
+                    window.location.href = 'product-list.html'; // 跳转回商品列表
                 } else {
-                    showMessage('添加失败：' + data.msg, 'error');
+                    alert('商品添加失败: ' + data.msg);
                 }
             })
             .catch(error => {
-                showMessage('网络错误，请稍后重试', 'error');
-                console.error('添加商品失败:', error);
+                console.error('请求失败:', error);
+                alert('网络错误，添加失败');
             });
     });
-
-    // 消息提示函数
-    function showMessage(text, type) {
-        const messageDiv = document.getElementById('message');
-        messageDiv.textContent = text;
-        messageDiv.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
-
-        if (type === 'success') {
-            messageDiv.classList.add('bg-green-100', 'text-green-800');
-        } else if (type === 'error') {
-            messageDiv.classList.add('bg-red-100', 'text-red-800');
-        } else {
-            messageDiv.classList.add('bg-blue-100', 'text-blue-800');
-        }
-
-        // 3秒后自动隐藏信息
-        setTimeout(() => {
-            messageDiv.classList.add('hidden');
-        }, 3000);
-    }
 </script>
 </body>
 </html>

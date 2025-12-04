@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的订单 - 电商演示平台</title>
+    <style>
+        .order-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .search-bar {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 8px;
+        }
+        .search-bar button {
+            padding: 8px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f1f5f9;
+        }
+        .header {
+            padding: 20px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>我的订单</h1>
+    <a href="product-list.html">返回商品列表</a> |
+    <a href="order-form.html">创建新订单</a>
+</div>
+
+<div class="order-container">
+    <div class="search-bar">
+        <input type="number" id="userId" placeholder="输入用户ID查询订单" min="1">
+        <button onclick="searchOrders()">查询订单</button>
+    </div>
+
+    <table id="orderTable">
+        <thead>
+        <tr>
+            <th>订单ID</th>
+            <th>商品ID</th>
+            <th>购买数量</th>
+            <th>订单总价(元)</th>
+            <th>创建时间</th>
+        </tr>
+        </thead>
+        <tbody id="orderList">
+        <!-- 订单数据将在这里展示 -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // 从URL获取用户ID（如果有）
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+    if (userId) {
+        document.getElementById('userId').value = userId;
+        searchOrders(); // 自动查询
+    }
+
+    // 查询订单函数
+    function searchOrders() {
+        const userId = document.getElementById('userId').value;
+        if (!userId || userId <= 0) {
+            alert('请输入有效的用户ID');
+            return;
+        }
+
+        fetch(`http://localhost:8080/order/user/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                const orderList = document.getElementById('orderList');
+                if (data.code === 200) {
+                    if (data.data.length === 0) {
+                        orderList.innerHTML = '<tr><td colspan="5" style="text-align:center">暂无订单</td></tr>';
+                    } else {
+                        orderList.innerHTML = '';
+                        data.data.forEach(order => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                    <td>${order.id}</td>
+                                    <td>${order.productId}</td>
+                                    <td>${order.num}</td>
+                                    <td>${order.totalPrice}</td>
+                                    <td>${order.createTime || '未知'}</td>
+                                `;
+                            orderList.appendChild(row);
+                        });
+                    }
+                } else {
+                    alert('查询失败: ' + data.msg);
+                }
+            })
+            .catch(error => console.error('请求失败:', error));
+    }
+</script>
+</body>
+</html>

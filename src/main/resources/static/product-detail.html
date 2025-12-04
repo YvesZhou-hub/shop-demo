@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品详情 - 电商演示平台</title>
+    <style>
+        .detail-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .price {
+            color: #e53e3e;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .stock {
+            color: #22c55e;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .header {
+            padding: 20px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>商品详情</h1>
+    <a href="product-list.html">返回商品列表</a> |
+    <a href="order-form.html">创建订单</a>
+</div>
+
+<div class="detail-container" id="productDetail"></div>
+
+<script>
+    // 从URL获取商品ID
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+
+    if (!productId) {
+        document.getElementById('productDetail').innerHTML = '<p>商品ID不存在</p>';
+    } else {
+        // 查询商品详情
+        fetch(`http://localhost:8080/product/${productId}`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('productDetail');
+                if (data.code === 200 && data.data) {
+                    const product = data.data;
+                    container.innerHTML = `
+                            <h2>${product.productName}</h2>
+                            <p class="price">￥${product.price}</p>
+                            <p class="stock">库存: ${product.stock} 件</p>
+                            <p><strong>描述:</strong> ${product.description || '无描述'}</p>
+                            <p><strong>上架时间:</strong> ${product.createTime}</p>
+                            <button class="btn" onclick="window.location.href='order-form.html?productId=${product.id}'">
+                                立即购买
+                            </button>
+                        `;
+                } else {
+                    container.innerHTML = `<p>商品不存在: ${data.msg}</p>`;
+                }
+            })
+            .catch(error => console.error('请求失败:', error));
+    }
+</script>
+</body>
+</html>
