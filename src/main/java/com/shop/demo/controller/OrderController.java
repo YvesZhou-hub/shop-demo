@@ -1,5 +1,6 @@
 package com.shop.demo.controller;
 
+import com.shop.demo.dto.OrderRequest;
 import com.shop.demo.entity.Order;
 import com.shop.demo.exception.InsufficientStockException;
 import com.shop.demo.exception.ProductNotFoundException;
@@ -26,10 +27,20 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    /**
+     * 接收客户端下单请求时只使用 OrderRequest DTO（避免对服务端生成字段校验）
+     */
     @PostMapping("/add")
-    public ResponseEntity<Map<String, Object>> addOrder(@Valid @RequestBody Order order) {
+    public ResponseEntity<Map<String, Object>> addOrder(@Valid @RequestBody OrderRequest orderReq) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 把请求 DTO 转为实体，只设置客户端应提供的字段
+            Order order = new Order();
+            order.setUserId(orderReq.getUserId());
+            order.setProductId(orderReq.getProductId());
+            order.setNum(orderReq.getNum());
+            // totalPrice / createTime / id 等由 Service / DB 填充
+
             int result = orderService.addOrder(order);
             if (result > 0) {
                 response.put("code", 200);

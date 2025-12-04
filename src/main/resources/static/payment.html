@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>收款 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+    <style>
+        .payment-box { display:flex; gap:16px; align-items:flex-start; margin-top:12px; }
+        .qr { width:220px; height:220px; border:1px dashed #ddd; display:flex;align-items:center;justify-content:center;background:#fff; }
+        .pay-actions{ margin-left:12px; }
+    </style>
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>收款</h1>
+        <nav>
+            <a href="index.html">首页</a>
+            <a href="cart.html">购物车</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section class="card">
+        <h2>请完成支付</h2>
+
+        <div id="no-info" class="empty" style="display:none">未找到支付信息，请返回购物车或订单页。</div>
+
+        <div id="payment-area" style="display:none">
+            <div>订单号: <span id="orders-list"></span></div>
+            <div style="margin-top:8px">应付金额: <strong id="pay-amount">¥0.00</strong></div>
+
+            <div class="payment-box">
+                <div class="qr" id="qr-area">二维码区域</div>
+                <div class="pay-actions">
+                    <p>请选择支付方式（模拟）：</p>
+                    <button id="btn-alipay" class="btn">支付宝支付（模拟）</button>
+                    <button id="btn-wechat" class="btn" style="margin-left:8px">微信支付（模拟）</button>
+                    <div style="margin-top:12px">
+                        <button id="btn-paid" class="btn" style="background:green">我已完成支付（模拟回调）</button>
+                    </div>
+                    <div id="pay-result" class="result" style="margin-top:12px"></div>
+                </div>
+            </div>
+
+            <div style="margin-top:12px">
+                <button id="btn-back-orders" class="btn" style="background:#6b7280">查看我的订单</button>
+                <button id="btn-back-home" class="btn" style="margin-left:8px">返回首页</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 收款页面（模拟）</small>
+</footer>
+
+<script>
+    // 读取 payment_info 并显示
+    function loadPaymentInfo() {
+        const raw = sessionStorage.getItem('payment_info');
+        if (!raw) {
+            document.getElementById('no-info').style.display = 'block';
+            document.getElementById('payment-area').style.display = 'none';
+            return;
+        }
+        const info = JSON.parse(raw);
+        document.getElementById('no-info').style.display = 'none';
+        document.getElementById('payment-area').style.display = 'block';
+
+        // 显示订单号列表
+        const ordersEl = document.getElementById('orders-list');
+        ordersEl.textContent = info.orderIds && info.orderIds.length ? info.orderIds.join(', ') : 'N/A';
+
+        // 显示金额
+        document.getElementById('pay-amount').textContent = '¥' + (Number(info.total || 0)).toFixed(2);
+
+        // 渲染伪二维码（这里只是占位）
+        const qr = document.getElementById('qr-area');
+        qr.textContent = 'QR: ¥' + (Number(info.total || 0)).toFixed(2);
+
+        // 绑定按钮
+        document.getElementById('btn-alipay').addEventListener('click', () => {
+            alert('跳转到支付宝（模拟）');
+        });
+        document.getElementById('btn-wechat').addEventListener('click', () => {
+            alert('打开微信支付（模拟）');
+        });
+
+        // 模拟支付完成按钮：在真实场景应由支付回调（服务器端）通知并更新订单状态
+        document.getElementById('btn-paid').addEventListener('click', () => {
+            // 模拟：清除 payment_info 并提示支付成功
+            sessionStorage.removeItem('payment_info');
+            document.getElementById('pay-result').textContent = '支付成功！系统会在几秒内跳转到订单查询页面。';
+            // 若有后端支付回调，应在回调成功后再跳转
+            setTimeout(() => {
+                // 跳转到用户订单查询页（若你有订单页，可改为跳转；这里跳转回 order 查询页面）
+                window.location.href = 'order.html';
+            }, 2000);
+        });
+
+        document.getElementById('btn-back-orders').addEventListener('click', () => {
+            window.location.href = 'order.html';
+        });
+        document.getElementById('btn-back-home').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPaymentInfo);
+</script>
+</body>
+</html>

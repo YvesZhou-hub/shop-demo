@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>商品管理 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<header>
+    <h1>商品管理</h1>
+    <nav>
+        <a href="templates/static/index.html">首页</a>
+        <a href="admin.html">商品管理（添加）</a>
+    </nav>
+</header>
+
+<main>
+    <section>
+        <h2>添加商品（仅测试用）</h2>
+        <form id="add-product-form" class="form">
+            <label>
+                商品名称:
+                <input id="productName" required maxlength="100" />
+            </label>
+            <label>
+                价格(元):
+                <input id="price" type="number" step="0.01" min="0.01" value="1.00" />
+            </label>
+            <label>
+                库存:
+                <input id="stock" type="number" min="0" value="10" />
+            </label>
+            <label>
+                描述:
+                <textarea id="description"></textarea>
+            </label>
+            <button type="submit" class="btn">添加商品</button>
+        </form>
+
+        <div id="add-result" class="result"></div>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 前端演示</small>
+</footer>
+
+<script src="assets/app.js"></script>
+<script>
+    const api = new ApiClient();
+
+    document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const resultEl = document.getElementById('add-result');
+        resultEl.textContent = '';
+        const product = {
+            productName: document.getElementById('productName').value.trim(),
+            price: Number(document.getElementById('price').value),
+            stock: Number(document.getElementById('stock').value),
+            description: document.getElementById('description').value.trim()
+        };
+        if (!product.productName) {
+            resultEl.textContent = '请输入商品名称';
+            return;
+        }
+        if (isNaN(product.price) || product.price <= 0) {
+            resultEl.textContent = '请输入有效价格';
+            return;
+        }
+        try {
+            const r = await api.addProduct(product);
+            if (r && r.code === 200) {
+                resultEl.textContent = `添加成功，商品ID: ${r.data}`;
+            } else {
+                resultEl.textContent = `添加失败：${r ? r.msg : '未知错误'}`;
+            }
+        } catch (err) {
+            console.error(err);
+            resultEl.textContent = '添加异常，请检查后端或网络';
+        }
+    });
+</script>
+</body>
+</html>

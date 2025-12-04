@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>下单 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<header>
+    <h1>下单页面</h1>
+    <nav>
+        <a href="index.html">首页</a>
+        <a href="order.html">下单</a>
+        <a href="admin.html">商品管理（添加）</a>
+    </nav>
+</header>
+
+<main>
+    <section class="card">
+        <h2>创建订单</h2>
+        <form id="create-order-form" class="form">
+            <label>
+                用户 ID:
+                <input id="order-userId" type="number" min="1" required value="1" />
+            </label>
+
+            <label>
+                选择商品:
+                <select id="order-product" required>
+                    <option value="">加载中...</option>
+                </select>
+            </label>
+
+            <label>
+                购买数量:
+                <input id="order-num" type="number" min="1" value="1" required />
+            </label>
+
+            <div style="margin-top:8px">
+                <button id="submit-order" class="btn" type="submit">提交下单</button>
+                <button id="clear-order" type="button" class="btn" style="background:#6b7280;margin-left:8px">清空</button>
+            </div>
+        </form>
+
+        <div id="create-result" class="result"></div>
+    </section>
+
+    <section class="card" style="margin-top:16px;">
+        <h2>查询用户订单</h2>
+        <label>
+            用户 ID:
+            <input id="query-userId" type="number" min="1" value="1" />
+        </label>
+        <div style="margin-top:8px">
+            <button id="btn-query-orders" class="btn">查询订单</button>
+        </div>
+
+        <div id="orders-loading" style="margin-top:8px;color:#6b7280;display:none">加载中…</div>
+        <ul id="orders-list" style="margin-top:12px;list-style:none;padding:0"></ul>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 下单页面</small>
+</footer>
+
+<script src="assets/app.js"></script>
+<script>
+    const api = new ApiClient();
+
+    // 填充商品下拉框
+    async function fillProductOptions() {
+        const sel = document.getElementById('order-product');
+        sel.innerHTML = '<option value="">加载中...</option>';
+        try {
+            const res = await api.getAllProducts();
+            if (!res || !res.data || res.data.length === 0) {
+                sel.innerHTML = '<option value="">暂无可用商品</option>';
+                return;
+            }
+            sel.innerHTML = '<option value="">请选择商品</option>';
+            res.data.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.productName ?? '未命名'} (¥${Number(p.price ?? 0).toFixed(2)} · 库存:${p.stock ?? 0})`;
+                sel.appendChild(opt);
+            });
+        } catch (err) {
+            console.error(err);
+            sel.innerHTML = '<option value="">加载失败</option>';
+        }
+    }
+
+    // 创建订单
+    document.getElementById('create-order-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = Number(document.getElementById('order-userId').value || 0);
+        const productId = Number(document.getElementById('order-product').value || 0);
+        const num = Number(document.getElementById('order-num').value || 0);
+        const resultEl = document.getElementById('create-result');
+        resultEl.textContent = '';
+
+        if (userId <= 0) { resultEl.textContent = '请输入有效用户 ID'; return; }
+        if (!productId) { resultEl.textContent = '请先选择商品'; return; }
+        if (num <= 0) { resultEl.textContent = '请输入有效购买数量'; return; }
+
+        // 简单防护：禁用按钮避免重复提交
+        const submitBtn = document.getElementById('submit-order');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '提交中…';
+
+        try {
+            const payload = { userId: userId, productId: productId, num: num };
+            const r = await api.createOrder(payload);
+            if (r && r.code === 200) {
+                resultEl.textContent = `下单成功，订单ID: ${r.data}`;
+                // 可选：自动刷新用户订单
+                loadOrdersForUser(userId);
+            } else {
+                resultEl.textContent = `下单失败：${r ? r.msg : '未知错误'}`;
+            }
+        } catch (err) {
+            console.error(err);
+            resultEl.textContent = '下单异常，请稍后重试';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '提交下单';
+        }
+    });
+
+    // 清空表单
+    document.getElementById('clear-order').addEventListener('click', () => {
+        document.getElementById('order-product').value = '';
+        document.getElementById('order-num').value = 1;
+        document.getElementById('create-result').textContent = '';
+    });
+
+    // 查询并展示订单
+    async function loadOrdersForUser(userId) {
+        const loading = document.getElementById('orders-loading');
+        const list = document.getElementById('orders-list');
+        loading.style.display = 'block';
+        list.innerHTML = '';
+        try {
+            const res = await api.getOrdersByUserId(userId);
+            loading.style.display = 'none';
+            if (!res || !res.data || res.data.length === 0) {
+                list.innerHTML = '<li class="empty">暂无订单</li>';
+                return;
+            }
+            res.data.forEach(o => {
+                const li = document.createElement('li');
+                li.className = 'product-item';
+                li.innerHTML = `
+            <div>
+              <div>订单ID: ${escapeHtml(o.id)}</div>
+              <div>商品ID: ${escapeHtml(o.productId)}</div>
+              <div>数量: ${escapeHtml(o.num)}</div>
+              <div>总价: ¥${Number(o.totalPrice ?? 0).toFixed(2)}</div>
+              <div>创建时间: ${escapeHtml(o.createTime ?? '')}</div>
+            </div>
+          `;
+                list.appendChild(li);
+            });
+        } catch (err) {
+            loading.style.display = 'none';
+            list.innerHTML = '<li class="empty">查询失败，请检查网络或后端</li>';
+            console.error(err);
+        }
+    }
+
+    // 点击查询按钮
+    document.getElementById('btn-query-orders').addEventListener('click', () => {
+        const id = Number(document.getElementById('query-userId').value || 0);
+        if (id <= 0) {
+            alert('请输入有效用户 ID');
+            return;
+        }
+        loadOrdersForUser(id);
+    });
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', async () => {
+        await fillProductOptions();
+        // 预加载默认用户订单（可选）
+        const defaultUser = Number(document.getElementById('query-userId').value || 0);
+        if (defaultUser > 0) loadOrdersForUser(defaultUser);
+    });
+</script>
+</body>
+</html>

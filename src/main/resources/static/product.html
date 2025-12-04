@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>商品详情 - Shop Demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+<header>
+    <div class="brand">
+        <h1>商品详情</h1>
+        <nav>
+            <a href="index.html">首页</a>
+            <a href="cart.html">购物车 <span class="cart-badge" style="display:none"></span></a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <section id="product-section">
+        <div id="loading">加载中…</div>
+
+        <div id="product-card" class="card" style="display:none;">
+            <h2 id="p-name"></h2>
+            <p id="p-desc"></p>
+            <p>价格: <strong id="p-price"></strong> &nbsp; 库存: <span id="p-stock"></span></p>
+
+            <div class="form">
+                <label>购买数量: <input id="buyNum" type="number" min="1" value="1" /></label>
+                <div style="margin-top:8px">
+                    <button id="btn-add-cart" class="btn">加入购物车</button>
+                    <button id="btn-buy-now" class="btn" style="margin-left:8px">立即下单</button>
+                </div>
+            </div>
+
+            <div id="order-result" class="result"></div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <small>示例商店 — 前端演示</small>
+</footer>
+
+<script src="assets/app.js"></script>
+<script>
+    const api = new ApiClient();
+
+    function getQueryParam(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name);
+    }
+
+    async function loadProduct() {
+        const loading = document.getElementById('loading');
+        const card = document.getElementById('product-card');
+        const id = getQueryParam('id');
+        if (!id) {
+            loading.textContent = '缺少商品 id 参数';
+            return;
+        }
+        try {
+            const res = await api.getProductById(id);
+            loading.style.display = 'none';
+            if (!res || res.code === 404 || !res.data) {
+                loading.textContent = '商品不存在';
+                return;
+            }
+            const p = res.data;
+            document.getElementById('p-name').textContent = p.productName || '未命名';
+            document.getElementById('p-desc').textContent = p.description || '';
+            document.getElementById('p-price').textContent = Number(p.price ?? 0).toFixed(2);
+            document.getElementById('p-stock').textContent = p.stock ?? 0;
+            card.style.display = 'block';
+
+            document.getElementById('btn-add-cart').addEventListener('click', () => {
+                const qty = Number(document.getElementById('buyNum').value || 1);
+                api.addToCart({
+                    productId: p.id,
+                    productName: p.productName,
+                    price: p.price,
+                    stock: p.stock,
+                    qty: qty
+                });
+                alert('已加入购物车');
+            });
+
+            document.getElementById('btn-buy-now').addEventListener('click', async () => {
+                const qty = Number(document.getElementById('buyNum').value || 1);
+                const userId = Number(prompt('请输入用户 ID（仅测试）', '1'));
+                if (!userId || userId <= 0) { alert('请输入有效用户 ID'); return; }
+                // 立即下单（直接调用 createOrder）
+                try {
+                    const r = await api.createOrder({ userId: userId, productId: p.id, num: qty });
+                    if (r && r.code === 200) {
+                        alert('下单成功，订单ID: ' + r.data);
+                    } else {
+                        alert('下单失败：' + (r ? r.msg : '未知错误'));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('下单失败：' + err.message);
+                }
+            });
+
+        } catch (err) {
+            loading.textContent = '加载失败';
+            console.error(err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProduct);
+</script>
+</body>
+</html>
