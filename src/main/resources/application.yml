@@ -18,3 +18,8 @@ mybatis:
 
 server:
   port: 8080
+
+# 日志配置
+logging:
+  file:
+    path: logs  # 日志存储目录
