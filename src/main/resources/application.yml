@@ -2,10 +2,10 @@ spring:
   application:
     name: shop-demo
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/shop_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
-    username: root
-    password: Zy@20070406
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://ep-wild-cell-a4eyvtv0-pooler.us-east-1.aws.neon.tech:5432/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_fOKHwyjz7Y2C
   profiles:
     active: dev
 

@@ -4,13 +4,13 @@
     <!-- 查询所有商品：数据库商品名称字段是 name，映射到实体类 productName -->
     <select id="selectAll" resultType="com.shop.demo.entity.Product">
         SELECT
-            id,
-            name as productName,  -- 数据库字段 name → 实体类 productName
-            price,
-            stock,
-            description,
-            create_time as createTime  -- 数据库字段 create_time → 实体类 createTime
-        FROM product
+        id,
+        name as productName,  -- 数据库字段 name → 实体类 productName
+        price,
+        stock,
+        description,
+        create_time as createTime  -- 数据库字段 create_time → 实体类 createTime
+        FROM "product"  <!-- 加上双引号，适配 Postgres -->
     </select>
 
     <!-- 根据ID查询商品 -->
@@ -22,7 +22,7 @@
             stock,
             description,
             create_time as createTime
-        FROM product
+        FROM "product"
         WHERE id = #{id}
     </select>
 
@@ -35,33 +35,34 @@
             stock,
             description,
             create_time as createTime
-        FROM product
+        FROM "product"
         WHERE id = #{id}
-            FOR UPDATE  -- 行级锁，防止并发更新冲突
+            FOR UPDATE  -- Postgres 也支持 FOR UPDATE 行锁
     </select>
 
-    <!-- 更新库存：数据库无 update_time 字段，删除该字段赋值 -->
+    <!-- 更新库存 -->
     <update id="updateStock">
-        UPDATE product
-        SET stock = #{newStock}  -- 移除 update_time（数据库表中未定义）
+        UPDATE "product"
+        SET stock = #{newStock}
         WHERE id = #{productId}
-          AND stock >= #{buyNum}  -- 库存充足校验，防止超卖
+          AND stock >= #{buyNum}  -- 库存充足校验
     </update>
 
-    <!-- 插入商品：数据库商品名称字段是 name，对应实体类 productName -->
+    <!-- 插入商品 -->
+    <!-- useGeneratedKeys="true" 在 Postgres 中会自动转换为 RETURNING id -->
     <insert id="insertProduct" parameterType="com.shop.demo.entity.Product" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO product (
-            name,  -- 数据库字段名：name
+        INSERT INTO "product" (
+            name,  -- 数据库字段名
             price,
             stock,
             description,
             create_time
         ) VALUES (
-                     #{productName},  -- 实体类属性名：productName
+                     #{productName},  -- 实体类属性名
                      #{price},
                      #{stock},
                      #{description},
-                     CURRENT_TIMESTAMP  -- 数据库自动填充创建时间（也可由程序传入）
+                     CURRENT_TIMESTAMP  -- Postgres 支持 CURRENT_TIMESTAMP
                  )
     </insert>
 </mapper>

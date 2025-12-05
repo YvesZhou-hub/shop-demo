@@ -153,35 +153,39 @@ class ApiClient {
         return cart.reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 0)), 0);
     }
 
-    // 批量下单（修改版：调用后端原子接口）
+    // ---------------------
+    // 批量下单逻辑（原子操作，调用后端 /order/add/batch）
     // items: [{ productId, qty }]
     // userId: number
-    // 返回：{ success: [{productId, orderId}], failed: [{productId, reason}] }
+    // 返回：{ success: [], failed: [] }
+    // ---------------------
     async checkoutItems(userId, items) {
         if (!items || items.length === 0) {
             return { success: [], failed: [] };
         }
 
         // 构造后端 BatchOrderRequest 需要的格式
+        // 后端 DTO: { userId: 1, items: [{ productId: 1, num: 2 }] }
         const payload = {
             userId: userId,
             items: items.map(it => ({
                 productId: it.productId,
-                num: it.qty // 注意字段名映射：后端 DTO 用 num，购物车用 qty
+                num: it.qty // 字段映射：js用qty，后端用num
             }))
         };
 
         try {
-            // 调用新增的批量接口
+            // 调用后端新增的批量接口
             const res = await this.request('/order/add/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            // 成功逻辑
             if (res && res.code === 200) {
-                // res.data 是一个 orderId 列表 [101, 102]，顺序与 items 一致
+                // 成功：res.data 是一个 orderId 的 List
+                // 我们需要构造回显数据，让 checkout-submit.js 知道每个商品对应的 orderId
+                // 假设后端返回的 orderId 顺序与传入的 items 顺序一致
                 const successList = res.data.map((orderId, index) => ({
                     productId: items[index].productId,
                     orderId: orderId
@@ -189,8 +193,7 @@ class ApiClient {
                 return { success: successList, failed: [] };
             }
 
-            // 失败逻辑 (业务错误，如库存不足)
-            // 此时后端已回滚，所有商品均失败
+            // 失败：后端事务回滚，所有商品均失败
             const failedList = items.map(it => ({
                 productId: it.productId,
                 reason: res.msg || '下单失败'
@@ -198,7 +201,7 @@ class ApiClient {
             return { success: [], failed: failedList };
 
         } catch (e) {
-            // 网络或系统异常
+            // 网络或其他异常，标记所有商品失败
             const failedList = items.map(it => ({
                 productId: it.productId,
                 reason: e.message || '网络异常'
