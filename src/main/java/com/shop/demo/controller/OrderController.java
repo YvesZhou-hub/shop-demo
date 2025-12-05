@@ -1,9 +1,8 @@
 package com.shop.demo.controller;
 
+import com.shop.demo.dto.BatchOrderRequest;
 import com.shop.demo.dto.OrderRequest;
 import com.shop.demo.entity.Order;
-import com.shop.demo.exception.InsufficientStockException;
-import com.shop.demo.exception.ProductNotFoundException;
 import com.shop.demo.service.OrderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -27,41 +26,29 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // 保留单个 add 接口兼容旧代码...
+
     /**
-     * 接收客户端下单请求时只使用 OrderRequest DTO（避免对服务端生成字段校验）
+     * 批量下单接口
      */
-    @PostMapping("/add")
-    public ResponseEntity<Map<String, Object>> addOrder(@Valid @RequestBody OrderRequest orderReq) {
+    @PostMapping("/add/batch")
+    public ResponseEntity<Map<String, Object>> addOrderBatch(@Valid @RequestBody BatchOrderRequest batchReq) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 把请求 DTO 转为实体，只设置客户端应提供的字段
-            Order order = new Order();
-            order.setUserId(orderReq.getUserId());
-            order.setProductId(orderReq.getProductId());
-            order.setNum(orderReq.getNum());
-            // totalPrice / createTime / id 等由 Service / DB 填充
+            List<Long> orderIds = orderService.createBatchOrder(batchReq);
 
-            int result = orderService.addOrder(order);
-            if (result > 0) {
-                response.put("code", 200);
-                response.put("msg", "订单创建成功");
-                response.put("data", order.getId());
-                return ResponseEntity.ok(response);
-            }
-        } catch (ProductNotFoundException | InsufficientStockException e) {
-            // 捕获业务异常，返回具体错误信息
-            response.put("code", 400);
-            response.put("msg", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("code", 200);
+            response.put("msg", "批量下单成功");
+            response.put("data", orderIds); // 返回所有生成的订单 ID
+            return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            log.error("创建订单接口异常", e);
-            response.put("code", 500);
-            response.put("msg", "服务器内部错误");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            // 这里捕获所有异常（包括库存不足），事务已在 Service 层回滚
+            log.error("批量下单异常", e);
+            response.put("code", 400);
+            response.put("msg", "下单失败：" + e.getMessage()); // 返回具体错误（如库存不足）
+            return ResponseEntity.badRequest().body(response);
         }
-        response.put("code", 400);
-        response.put("msg", "订单创建失败");
-        return ResponseEntity.badRequest().body(response);
     }
 
     @GetMapping("/user/{userId}")

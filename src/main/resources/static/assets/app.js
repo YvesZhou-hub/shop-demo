@@ -153,32 +153,58 @@ class ApiClient {
         return cart.reduce((s, it) => s + (Number(it.price || 0) * Number(it.qty || 0)), 0);
     }
 
-    // 批量下单（当前实现为逐项调用后端 createOrder）
+    // 批量下单（修改版：调用后端原子接口）
     // items: [{ productId, qty }]
     // userId: number
-    // address: object (仅作记录，后端不使用)
-    // 返回：{ success: [], failed: [] }
+    // 返回：{ success: [{productId, orderId}], failed: [{productId, reason}] }
     async checkoutItems(userId, items) {
-        const result = { success: [], failed: [] };
-        for (const it of items) {
-            try {
-                const payload = {
-                    userId: userId,
-                    productId: it.productId,
-                    num: it.qty
-                };
-                const r = await this.createOrder(payload);
-                // 认为返回 {code:200, data:orderId}
-                if (r && r.code === 200) {
-                    result.success.push({ productId: it.productId, orderId: r.data });
-                } else {
-                    result.failed.push({ productId: it.productId, reason: r ? r.msg : '未知错误' });
-                }
-            } catch (e) {
-                result.failed.push({ productId: it.productId, reason: e.message || '网络错误' });
-            }
+        if (!items || items.length === 0) {
+            return { success: [], failed: [] };
         }
-        return result;
+
+        // 构造后端 BatchOrderRequest 需要的格式
+        const payload = {
+            userId: userId,
+            items: items.map(it => ({
+                productId: it.productId,
+                num: it.qty // 注意字段名映射：后端 DTO 用 num，购物车用 qty
+            }))
+        };
+
+        try {
+            // 调用新增的批量接口
+            const res = await this.request('/order/add/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // 成功逻辑
+            if (res && res.code === 200) {
+                // res.data 是一个 orderId 列表 [101, 102]，顺序与 items 一致
+                const successList = res.data.map((orderId, index) => ({
+                    productId: items[index].productId,
+                    orderId: orderId
+                }));
+                return { success: successList, failed: [] };
+            }
+
+            // 失败逻辑 (业务错误，如库存不足)
+            // 此时后端已回滚，所有商品均失败
+            const failedList = items.map(it => ({
+                productId: it.productId,
+                reason: res.msg || '下单失败'
+            }));
+            return { success: [], failed: failedList };
+
+        } catch (e) {
+            // 网络或系统异常
+            const failedList = items.map(it => ({
+                productId: it.productId,
+                reason: e.message || '网络异常'
+            }));
+            return { success: [], failed: failedList };
+        }
     }
 }
 
